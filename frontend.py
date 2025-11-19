@@ -85,18 +85,18 @@ class FinanceApp:
         # NEW BUTTONS
         # tk.Button(summary_frame, text="Show Graph", command=self.show_graph).pack(side="right", padx=5)
 
-        # Date range filters
-        tk.Label(summary_frame, text="From:").pack(side="left")
-        self.graph_from_entry = tk.Entry(summary_frame, width=12)
-        self.graph_from_entry.pack(side="left", padx=2)
-        self.graph_from_entry.insert(0, datetime.now().strftime("%Y-%m-01"))  # first day of month
-
-        tk.Label(summary_frame, text="To:").pack(side="left")
-        self.graph_to_entry = tk.Entry(summary_frame, width=12)
-        self.graph_to_entry.pack(side="left", padx=2)
-        self.graph_to_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
 
         tk.Button(summary_frame, text="Show Graph", command=self.show_graph).pack(side="right", padx=5)
+        # Date range filters
+        # tk.Label(summary_frame, text="From:").pack(side="left")
+        self.graph_from_entry = tk.Entry(summary_frame, width=12)
+        self.graph_from_entry.pack(side="right", padx=2)
+        self.graph_from_entry.insert(0, datetime.now().strftime("%Y-%m-01"))  # first day of month
+
+        # tk.Label(summary_frame, text="To:").pack(side="left")
+        self.graph_to_entry = tk.Entry(summary_frame, width=12)
+        self.graph_to_entry.pack(side="right", padx=2)
+        self.graph_to_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
 
         tk.Button(summary_frame, text="Export CSV", command=self.export_csv).pack(side="right", padx=5)
         tk.Button(summary_frame, text="Bulk Upload Excel", command=self.bulk_upload_excel).pack(side="right", padx=5)
