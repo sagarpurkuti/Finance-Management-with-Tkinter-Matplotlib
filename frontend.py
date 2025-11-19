@@ -5,7 +5,6 @@ import csv
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import openpyxl
-import nepali_datetime
 
 
 from backend import FinanceManager, Transaction
