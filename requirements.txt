@@ -1,4 +1,4 @@
 # pip install openpyxl
 # pip install nepali-date-converter
 # pip install nepali-datetime
-
+matplotlib==3.9.2

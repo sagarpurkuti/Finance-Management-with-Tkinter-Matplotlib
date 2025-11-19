@@ -24,6 +24,9 @@ class FinanceApp:
         self.populate_table()
         self.update_summary_labels()
 
+        self.search_after_id = None
+
+
     def create_widgets(self):
         # --- Top Frame: Add Transaction Form ---
         form_frame = tk.LabelFrame(self.root, text="Add / Update Transaction", padx=10, pady=10)
@@ -46,9 +49,25 @@ class FinanceApp:
         self.remarks_entry = tk.Entry(form_frame, width=40)
         self.remarks_entry.grid(row=1, column=1, columnspan=5, sticky="w")
 
+        # --- Search Bar ---
+        search_frame = tk.Frame(self.root)
+        search_frame.pack(fill="x", padx=10, pady=5)
+
+        tk.Label(search_frame, text="Search: ").pack(side="left")
+
+        self.search_entry = tk.Entry(search_frame, width=40)
+        self.search_entry.pack(side="left", padx=5)
+        self.search_entry.bind("<KeyRelease>", self.on_search_key)
+
+
+        # tk.Button(search_frame, text="Search", command=self.search_transactions).pack(side="left")
+        # tk.Button(search_frame, text="Reset", command=self.reset_search).pack(side="left")
+
+
         tk.Button(form_frame, text="Add Transaction", command=self.add_transaction).grid(row=2, column=1, pady=8)
         tk.Button(form_frame, text="Update Selected", command=self.update_transaction).grid(row=2, column=2, pady=8)
         tk.Button(form_frame, text="Delete Selected", command=self.delete_transaction).grid(row=2, column=3, pady=8)
+        tk.Button(form_frame, text="Clear Form", command=self.clear_form).grid(row=2, column=4, pady=8)
 
         # --- Summary Frame ---
         summary_frame = tk.Frame(self.root)
@@ -64,7 +83,21 @@ class FinanceApp:
         self.expense_label.pack(side="left", padx=10)
 
         # NEW BUTTONS
+        # tk.Button(summary_frame, text="Show Graph", command=self.show_graph).pack(side="right", padx=5)
+
+        # Date range filters
+        tk.Label(summary_frame, text="From:").pack(side="left")
+        self.graph_from_entry = tk.Entry(summary_frame, width=12)
+        self.graph_from_entry.pack(side="left", padx=2)
+        self.graph_from_entry.insert(0, datetime.now().strftime("%Y-%m-01"))  # first day of month
+
+        tk.Label(summary_frame, text="To:").pack(side="left")
+        self.graph_to_entry = tk.Entry(summary_frame, width=12)
+        self.graph_to_entry.pack(side="left", padx=2)
+        self.graph_to_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
+
         tk.Button(summary_frame, text="Show Graph", command=self.show_graph).pack(side="right", padx=5)
+
         tk.Button(summary_frame, text="Export CSV", command=self.export_csv).pack(side="right", padx=5)
         tk.Button(summary_frame, text="Bulk Upload Excel", command=self.bulk_upload_excel).pack(side="right", padx=5)
 
@@ -83,9 +116,12 @@ class FinanceApp:
 
         self.table.bind("<<TreeviewSelect>>", self.select_transaction)
 
-        # Add scrollbar
+        # Scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.table.yview)
         self.table.configure(yscroll=scrollbar.set)
+
+        # PACK ORDER
+        self.table.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
     def populate_table(self):
@@ -165,9 +201,11 @@ class FinanceApp:
     def clear_form(self):
         self.amount_entry.delete(0, tk.END)
         self.remarks_entry.delete(0, tk.END)
+        self.search_entry.delete(0, tk.END)
         self.date_entry.delete(0, tk.END)
         self.date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
         self.type_var.set("income")
+        self.populate_table()
         self.selected_transaction = None
 
     # ========================= CSV EXPORT =========================
@@ -194,30 +232,78 @@ class FinanceApp:
         messagebox.showinfo("Success", f"CSV exported successfully!\n{file_path}")
 
     # ========================= GRAPH WINDOW =========================
+    # def show_graph(self):
+    #     transactions = self.fm.get_transactions()
+    #     if not transactions:
+    #         messagebox.showinfo("Info", "No data available for graph.")
+    #         return
+
+    #     transactions.sort(key=lambda t: t.date)
+
+    #     dates = [t.date for t in transactions]
+    #     balance_values = []
+    #     balance = 0
+
+    #     for tr in transactions:
+    #         balance += tr.amount if tr.type == "income" else -tr.amount
+    #         balance_values.append(balance)
+
+    #     graph_window = tk.Toplevel(self.root)
+    #     graph_window.title("Balance Over Time")
+    #     graph_window.geometry("800x500")
+    #     graph_window.resizable(True, True)  # ✅ resizable enabled
+
+    #     fig, ax = plt.subplots(figsize=(8, 4))
+    #     ax.plot(dates, balance_values, marker="o")
+    #     ax.set_title("Balance Over Time")
+    #     ax.set_xlabel("Date")
+    #     ax.set_ylabel("Balance")
+    #     ax.grid(True)
+    #     fig.autofmt_xdate()
+
+    #     canvas = FigureCanvasTkAgg(fig, master=graph_window)
+    #     canvas.draw()
+    #     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+
     def show_graph(self):
-        transactions = self.fm.get_transactions()
+        from_date = self.graph_from_entry.get().strip()
+        to_date = self.graph_to_entry.get().strip()
+
+        # Validate dates
+        try:
+            datetime.strptime(from_date, "%Y-%m-%d")
+            datetime.strptime(to_date, "%Y-%m-%d")
+        except:
+            messagebox.showerror("Error", "Invalid date format! Use YYYY-MM-DD")
+            return
+
+        # Fetch filtered data
+        transactions = self.fm.get_transactions(start_date=from_date, end_date=to_date)
+
         if not transactions:
-            messagebox.showinfo("Info", "No data available for graph.")
+            messagebox.showinfo("Info", "No transactions in selected date range.")
             return
 
         transactions.sort(key=lambda t: t.date)
 
         dates = [t.date for t in transactions]
         balance_values = []
-        balance = 0
 
+        # Calculate running balance within the range
+        balance = 0
         for tr in transactions:
             balance += tr.amount if tr.type == "income" else -tr.amount
             balance_values.append(balance)
 
+        # ---- Graph Window ----
         graph_window = tk.Toplevel(self.root)
         graph_window.title("Balance Over Time")
         graph_window.geometry("800x500")
-        graph_window.resizable(True, True)  # ✅ resizable enabled
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(dates, balance_values, marker="o")
-        ax.set_title("Balance Over Time")
+        ax.set_title(f"Balance Over Time ({from_date} to {to_date})")
         ax.set_xlabel("Date")
         ax.set_ylabel("Balance")
         ax.grid(True)
@@ -226,6 +312,7 @@ class FinanceApp:
         canvas = FigureCanvasTkAgg(fig, master=graph_window)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
 
     # ========================= Bulk Upload =========================
     def bulk_upload_excel(self):
@@ -316,6 +403,62 @@ class FinanceApp:
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to import file:\n{e}")
+
+    def search_transactions(self, event=None):
+        query = self.search_entry.get().strip().lower()
+        if not query:
+            self.populate_table()
+            return
+
+        results = []
+
+        # Detect DATE RANGE: "2024-01-01 to 2024-01-31"
+        if "to" in query:
+            try:
+                start, end = [q.strip() for q in query.split("to")]
+                start_date = datetime.strptime(start, "%Y-%m-%d").date()
+                end_date = datetime.strptime(end, "%Y-%m-%d").date()
+
+                for tr in self.fm.get_transactions():
+                    tr_date = datetime.strptime(tr.date, "%Y-%m-%d").date()
+                    if start_date <= tr_date <= end_date:
+                        results.append(tr)
+
+            except:
+                messagebox.showerror("Error", "Invalid date range format.\nUse: YYYY-MM-DD to YYYY-MM-DD")
+                return
+
+        else:
+            # Try AMOUNT
+            try:
+                amount_num = float(query)
+            except:
+                amount_num = None
+
+            for tr in self.fm.get_transactions():
+                if (
+                    (amount_num is not None and tr.amount == amount_num) or
+                    (query in tr.type.lower()) or
+                    (query in tr.remarks.lower()) or
+                    (query in tr.date.lower())
+                ):
+                    results.append(tr)
+
+        # Display the results
+        for row in self.table.get_children():
+            self.table.delete(row)
+
+        for tr in results:
+            self.table.insert("", tk.END,
+                values=(tr.id, tr.amount, tr.type, tr.remarks, tr.date, tr.created_at)
+            )
+
+    def on_search_key(self, event):
+        if self.search_after_id:
+            self.root.after_cancel(self.search_after_id)
+
+        # wait 300ms after last key stroke
+        self.search_after_id = self.root.after(300, self.search_transactions)
 
 
 if __name__ == "__main__":

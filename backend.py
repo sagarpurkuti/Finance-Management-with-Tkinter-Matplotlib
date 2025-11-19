@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+from tkinter import ttk, messagebox, filedialog
 from typing import List, Dict, Optional
 
 class DatabaseConnection:
@@ -224,8 +225,7 @@ class FinanceManager:
             print(f"Error deleting transaction: {e}")
             return False
     
-    def update_transaction(self, transaction_id: int, amount: float = None, 
-                          type: str = None, remarks: str = None, date: str = None) -> bool:
+    def update_transaction(self, transaction_id: int, amount: float = None, type: str = None, remarks: str = None, date: str = None) -> bool:
         """Update a transaction"""
         try:
             updates = []
